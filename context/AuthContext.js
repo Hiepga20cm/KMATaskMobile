@@ -8,25 +8,22 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [userToken, setUserToken] = useState("");
-  const [userInfo, setUserInfo] = useState(null);
+  // const [userInfo, setUserInfo] = useState(null);
   const [userId, setUserId] = useState("");
 
   const login = async (email, password) => {
     try {
       setIsLoading(true);
-      setIsLoading(false);
       const response = await loginUser(email, password);
       if (response) {
         const user = response.userDetails;
-        setUserToken(user.token);
-        setUserId(user._id);
         await AsyncStorage.setItem("userToken", user.token);
         await AsyncStorage.setItem("email", user.email);
         await AsyncStorage.setItem("_id", user._id);
         await AsyncStorage.setItem("username", user.username);
-        await AsyncStorage.setItem("active", user.active);
-        console.log("done asygnstorate");
-        setUserInfo(JSON.stringify(response));
+        await AsyncStorage.setItem("active", String(user.active));
+        setUserToken(user.token);
+        setUserId(user._id);
         setIsLoading(false);
         alert("Login successful");
       } else {
@@ -57,6 +54,7 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     setUserToken(null);
     AsyncStorage.removeItem("userToken");
+    AsyncStorage.removeItem("active");
     setIsLoading(false);
   };
 
@@ -64,7 +62,6 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       let userToken = await AsyncStorage.getItem("userToken");
-      console.log(userToken);
       setUserToken(userToken);
       setIsLoading(false);
     } catch (error) {

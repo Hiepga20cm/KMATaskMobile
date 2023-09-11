@@ -3,7 +3,6 @@ import {
   Text,
   View,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Button,
   Modal,
@@ -14,7 +13,12 @@ import { AuthContext } from "../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { activeUser } from "../axios/axios";
+import {
+  connectWithSocketServerAuth,
+  loginWithQrCode,
+} from "../socket/socketConnection";
 
+import CheckBox from "react-native-check-box";
 export default function Profile() {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
@@ -24,16 +28,23 @@ export default function Profile() {
   const logout = context.logout;
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [userData, setUserData] = useState({
-    userToken: "",
+    _id: "",
     email: "",
-    userId: "",
+    token: "",
     username: "",
-    active: false,
+    active: "false",
+    privateKey: "",
   });
+
   const [inputValue, setInputValue] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const [checked, setChecked] = useState(false);
+
+  const handleCheckboxChange = () => {
+    setChecked(!checked);
+  };
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -44,6 +55,7 @@ export default function Profile() {
     setShowScanner(true);
   };
   const handleCancel = () => {
+    setScanned(false);
     setShowScanner(false);
   };
   useEffect(() => {
@@ -55,18 +67,25 @@ export default function Profile() {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
-    setQrData(data);
+    const obj = JSON.parse(data);
+    setQrData(obj);
   };
 
   const handleActive = async () => {
     try {
-      //console.log("123123123");
-      const active = await activeUser(userData.userToken, inputValue);
+      console.log("handleActive  : ", userData);
+      const active = await activeUser(userData.token, inputValue);
+      console.log(userData);
       if (active) {
-        AsyncStorage.setItem("active", true);
+        console.log("active :", active);
+        AsyncStorage.setItem("active", "true");
+        AsyncStorage.setItem("privateKey", String(active.privateKey));
+        AsyncStorage.setItem("userToken", active.token);
         setUserData((prevUserData) => ({
           ...prevUserData,
-          active: true,
+          active: "true",
+          token: active.token,
+          privateKey : active.privateKey
         }));
         alert("Active user successfully");
       }
@@ -76,17 +95,32 @@ export default function Profile() {
   };
   const handleLogin = async () => {
     try {
+      if (userData) {
+        if (userData.active === "true") {
+          userData.active = true;
+          if (userData.privateKey != "") {
+            userData.privateKey = parseInt(userData.privateKey);
+          }
+          loginWithQrCode(qrData?.socketId, userData);
+        } else {
+          console.log("You have to active your account");
+        }
+      }
     } catch (error) {
       console.log(error);
     }
   };
   const handleShowPasswordInput = () => {
+    console.log("show passInput :", userData);
     setShowPasswordInput(true);
   };
   const handleClosePasswordInput = () => {
     setShowPasswordInput(false);
   };
-
+  const handleGoBack = () => {
+    setScanned(false);
+    setQrData(null);
+  };
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -95,20 +129,24 @@ export default function Profile() {
         const userIdValue = await AsyncStorage.getItem("_id");
         const usernameValue = await AsyncStorage.getItem("username");
         const userActiveStatus = await AsyncStorage.getItem("active");
-
+        const privateKey = await AsyncStorage.getItem("privateKey");
         setUserData({
-          userToken: userTokenValue,
+          token: userTokenValue,
           email: emailValue,
-          userId: userIdValue,
+          _id: userIdValue,
           username: usernameValue,
           active: userActiveStatus,
+          privateKey: privateKey || "",
         });
       } catch (error) {
         console.log(error);
       }
     };
-    getUserData();
-  }, [userData]);
+    if (context.userToken != null && context.userId != null) {
+      getUserData();
+      connectWithSocketServerAuth();
+    }
+  }, []);
 
   if (hasPermission === null) {
     return <Text>Requesting for camera permission</Text>;
@@ -129,14 +167,52 @@ export default function Profile() {
   return (
     <View style={styles.container}>
       {qrData ? (
-        <View style={styles.qrContainer}>
-          <Image style={styles.qrImage} source={{ uri: qrData }} />
-          <View style={styles.buttonContainer}>
-            <Text style={styles.buttonText} onPress={handleLogin}>
-              Login
+        <>
+          <View style={styles.qrContainer}>
+            <Text style={styles.header}>
+              Đăng nhập bằng mã QR trên thiết bị lạ
             </Text>
+            <Text style={styles.description}>
+              Tài khoản có thể bị chiếm đoạn nếu đây không phải thiết bị của
+              bạn. Bấm từ chối nếu ai đó yêu cầu bạn đăng nhập mã QR để bình
+              chọn, trúng thưởng hoặc nhận khuyến mãi,...
+            </Text>
+            <View style={styles.info}>
+              <Text style={styles.textInfo}>
+                Trình duyệt: {qrData?.browser}
+              </Text>
+              <Text style={styles.textInfo}>Thời gian: {qrData?.time} </Text>
+              <Text style={styles.textInfo}>
+                Địa điểm: {qrData?.location?.city}/{qrData?.location?.country}
+              </Text>
+            </View>
           </View>
-        </View>
+          <View style={styles.checkbox}>
+            <CheckBox
+              style={{ padding: 10 }}
+              onClick={() => {
+                handleCheckboxChange();
+              }}
+              isChecked={checked}
+              rightText={
+                "Tôi đã kiểm tra kỹ thông tin và xác nhận đó là thiết bị của tôi"
+              }
+            />
+            <View style={styles.confirm}>
+              <Text
+                style={[
+                  checked
+                    ? styles.buttonLoginActive
+                    : styles.buttonLoginInactive,
+                ]}
+                onPress={checked ? handleLogin : null}
+              >
+                Đăng nhập
+              </Text>
+              <Text style={styles.buttonRefuse}  onPress={handleGoBack}>Từ chối</Text>
+            </View>
+          </View>
+        </>
       ) : (
         <>
           {showScanner ? (
@@ -173,12 +249,14 @@ export default function Profile() {
                   <Text
                     style={[
                       styles.status,
-                      userData.active ? styles.active : styles.inactive,
+                      userData.active === "true"
+                        ? styles.active
+                        : styles.inactive,
                     ]}
                   >
-                    {userData.active ? "Active" : "Inactive"}
+                    {userData.active === "true" ? "Active" : "Inactive"}
                   </Text>
-                  {!userData.active && (
+                  {userData.active !== "true" && (
                     <>
                       <TouchableOpacity
                         style={styles.activateButton}
@@ -248,6 +326,74 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    marginTop: "20%",
+    textAlign: "center",
+    fontSize: "30px",
+    fontWeight: "bold",
+  },
+  confirm: {
+    textAlign: "center",
+    justifyContent: "center",
+    width: "100%",
+    alignItems: "center",
+  },
+  buttonRefuse: {
+    width: "90%",
+    borderRadius: 25,
+    textAlign: "center",
+    justifyContent: "center",
+    padding: 10,
+    borderWidth: 2,
+    fontWeight: "bold",
+    borderColor: "black",
+    fontSize: "20px",
+  },
+  buttonLoginActive: {
+    width: "90%",
+    borderRadius: 25,
+    textAlign: "center",
+    justifyContent: "center",
+    padding: 10,
+    borderWidth: 2,
+    borderColor: "black",
+    fontWeight: "bold",
+    margin: 2,
+    fontSize: "20px",
+  },
+  buttonLoginInactive: {
+    width: "90%",
+    borderRadius: 25,
+    textAlign: "center",
+    justifyContent: "center",
+    padding: 10,
+    borderWidth: 2,
+    borderColor: "black",
+    fontWeight: "300",
+    margin: 2,
+    fontSize: "20px",
+  },
+  checkbox: {
+    width: "100%",
+    height: "20%",
+    marginBottom: "5%",
+  },
+  info: {
+    marginTop: "10%",
+  },
+  textInfo: {
+    fontSize: "20px",
+    padding: 5,
+    fontWeight: "400",
+  },
+  description: {
+    textAlign: "center",
+    marginTop: "5%",
+    backgroundColor: "lightgray",
+    padding: 20,
+    marginHorizontal: 10,
+    borderRadius: 10,
+  },
   container: {
     flex: 1,
     flexDirection: "column",
@@ -281,7 +427,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     padding: 10,
-    borderRadius: 5,
+    borderRadius: 50,
   },
   avatarContainer: {
     width: 100,
@@ -346,7 +492,20 @@ const styles = StyleSheet.create({
     backgroundColor: "lightgray",
     borderRadius: 5,
   },
+  backButton: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: "lightgray",
+    borderRadius: 5,
+  },
   scanButtonText: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  backButtonText: {
     fontSize: 14,
     fontWeight: "bold",
   },
