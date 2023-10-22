@@ -98,7 +98,7 @@ export default function Profile() {
       if (userData) {
         if (userData.active === "true") {
           userData.active = true;
-          if (userData.privateKey != "") {
+          if (userData.privateKey !== "") {
             userData.privateKey = parseInt(userData.privateKey);
           }
           loginWithQrCode(qrData?.socketId, userData);

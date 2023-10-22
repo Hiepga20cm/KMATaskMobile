@@ -137,24 +137,6 @@ const Login = ({ navigation }) => {
         )}
 
         <CustomButton label={"Login"} onPress={handleLogin} />
-
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            marginBottom: 30,
-          }}
-        >
-          <Text>New to the app?</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("RegisterScreen")}
-          >
-            <Text style={{ color: "#AD40AF", fontWeight: "700" }}>
-              {" "}
-              Register
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );

@@ -9,7 +9,7 @@ interface ClientToServerEvents {
 
 let socket: Socket<ServerToClientEvents, ClientToServerEvents>;
 
-const SERVER_URL = "http://192.168.1.92:5001";
+const SERVER_URL = "http://192.168.0.164:5001";
 const connectWithSocketServerAuth = () => {
   socket = io(SERVER_URL);
   socket.on("connect", () => {
