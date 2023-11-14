@@ -55,6 +55,7 @@ export const AuthProvider = ({ children }) => {
     setUserToken(null);
     AsyncStorage.removeItem("userToken");
     AsyncStorage.removeItem("active");
+    AsyncStorage.removeItem("privateKey");
     setIsLoading(false);
   };
 

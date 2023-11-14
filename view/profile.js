@@ -19,6 +19,7 @@ import {
 } from "../socket/socketConnection";
 
 import CheckBox from "react-native-check-box";
+//import { store } from "../store";
 export default function Profile() {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
@@ -68,16 +69,23 @@ export default function Profile() {
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
     const obj = JSON.parse(data);
+    console.log("qrdata :",obj);
     setQrData(obj);
   };
-
+  // useEffect(()=>{
+  //   const statusLoginQr = store.getState().LoginQr.status
+  //   if (statusLoginQr === true) {
+  //     console.log(statusLoginQr);
+  //   } else {
+  //     console.log(statusLoginQr);
+  //   }
+  // },[store.getState().LoginQr.status])
   const handleActive = async () => {
     try {
-      console.log("handleActive  : ", userData);
+     
       const active = await activeUser(userData.token, inputValue);
-      console.log(userData);
+      console.log("active", active);
       if (active) {
-        console.log("active :", active);
         AsyncStorage.setItem("active", "true");
         AsyncStorage.setItem("privateKey", String(active.privateKey));
         AsyncStorage.setItem("userToken", active.token);
@@ -85,7 +93,7 @@ export default function Profile() {
           ...prevUserData,
           active: "true",
           token: active.token,
-          privateKey : active.privateKey
+          privateKey: active.privateKey,
         }));
         alert("Active user successfully");
       }
@@ -98,10 +106,12 @@ export default function Profile() {
       if (userData) {
         if (userData.active === "true") {
           userData.active = true;
-          if (userData.privateKey !== "") {
-            userData.privateKey = parseInt(userData.privateKey);
-          }
-          loginWithQrCode(qrData?.socketId, userData);
+          
+          console.log("userData : ", userData);
+          loginWithQrCode(qrData?.socketId,  userData, qrData?.key );
+          setQrData(null)
+          setShowScanner(false)
+          setChecked(false)
         } else {
           console.log("You have to active your account");
         }
@@ -146,7 +156,7 @@ export default function Profile() {
       getUserData();
       connectWithSocketServerAuth();
     }
-  }, []);
+  }, [showScanner]);
 
   if (hasPermission === null) {
     return <Text>Requesting for camera permission</Text>;
@@ -209,7 +219,9 @@ export default function Profile() {
               >
                 Đăng nhập
               </Text>
-              <Text style={styles.buttonRefuse}  onPress={handleGoBack}>Từ chối</Text>
+              <Text style={styles.buttonRefuse} onPress={handleGoBack}>
+                Từ chối
+              </Text>
             </View>
           </View>
         </>
