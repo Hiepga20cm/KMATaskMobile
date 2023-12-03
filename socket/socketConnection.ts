@@ -1,25 +1,28 @@
 import { io, Socket } from "socket.io-client";
 import { store } from "../store";
 import { setConfig } from "../actions/loginQr";
-import CryptoJS from 'react-native-crypto-js';
+import CryptoJS from "react-native-crypto-js";
 interface ServerToClientEvents {
   "information-of-client-login": (data: any) => void;
   "status-login-qr-server-to-mobile": (data: any) => void;
 }
 interface ClientToServerEvents {
-  sendDataLogin: (dataEncrypt: { message: string; receiverUserId: string }, SocketId: string) => void;
+  sendDataLogin: (
+    dataEncrypt: { message: string; receiverUserId: string },
+    SocketId: string
+  ) => void;
 }
-const  encryptObject = (object: any, key: any) => {
+const encryptObject = (object: any, key: any) => {
   const plaintext = JSON.stringify(object);
-  
+
   // Mã hóa văn bản rõ bằng AES với khóa đã cho
   const ciphertext = CryptoJS.AES.encrypt(plaintext, key).toString();
   console.log(ciphertext);
   return ciphertext;
-}
+};
 
 let socket: Socket<ServerToClientEvents, ClientToServerEvents>;
-const SERVER_URL = "http://192.168.1.147:5001";
+const SERVER_URL = "http://192.168.0.164:5001";
 const connectWithSocketServerAuth = () => {
   socket = io(SERVER_URL);
   socket.on("connect", () => {
@@ -32,7 +35,7 @@ const connectWithSocketServerAuth = () => {
   });
   socket.on("status-login-qr-server-to-mobile", (data: any) => {
     console.log("status login qr : ", data);
-    store.dispatch(setConfig(data) as any )
+    store.dispatch(setConfig(data) as any);
   });
 };
 const closeConnectWithServerAuth = () => {
@@ -44,7 +47,7 @@ const closeConnectWithServerAuth = () => {
 const loginWithQrCode = (SocketId: any, data: any, key: any) => {
   data.socketId = SocketId;
   data.socketOrgId = socket.id;
-  const dataEncrypt = encryptObject(data, key)
+  const dataEncrypt = encryptObject(data, key);
   socket.emit("sendDataLogin", dataEncrypt, SocketId);
 };
 
